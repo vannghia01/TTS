@@ -1,0 +1,7 @@
+cd path/to/tts_app
+git init
+git add .
+git commit -m "TTS App initial commit"
+git branch -M main
+git remote add origin https://github.com/<tên_người_dùng>/tts_app.git
+git push -u origin main
