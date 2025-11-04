@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TTS Tiếng Việt — Offline + ElevenLabs (1 file, giống UI hơn)</title>
+<style>
+  :root{--bg:#0b1020;--panel:#0f172a;--bd:#1f2937;--txt:#e5e7eb;--mut:#94a3b8;--pri:#2563eb;--accent:#22c55e;--err:#ef4444}
+  [data-theme="light"]{--bg:#f6f7fb;--panel:#ffffff;--bd:#e5e7eb;--txt:#0f172a;--mut:#64748b;--pri:#2563eb;--accent:#16a34a;--err:#dc2626}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto}
+  .wrap{max-width:980px;margin:28px auto;padding:0 16px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--bg));border:1px solid var(--bd);border-radius:16px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+  h1{font-size:1.25rem;margin:0 0 12px}
+  textarea{width:100%;min-height:170px;padding:12px;border-radius:12px;border:1px solid var(--bd);background:color-mix(in oklab,var(--panel) 80%,#000 5%);color:var(--txt);font-size:1rem;resize:vertical}
+  label{display:block;font-size:.92rem;color:var(--mut);margin:8px 0 6px}
+  select,input[type="range"],input[type="text"],input[type="number"],input[type="password"]{width:100%;padding:10px;border-radius:10px;border:1px solid var(--bd);background:color-mix(in oklab,var(--panel) 85%,#000 5%);color:var(--txt)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  button{padding:10px 14px;border:0;border-radius:12px;cursor:pointer}
+  .primary{background:var(--pri);color:#fff}
+  .ghost{background:color-mix(in oklab,var(--panel) 75%,#000 8%);color:var(--txt);border:1px solid var(--bd)}
+  .success{background:var(--accent);color:#fff}
+  .danger{background:var(--err);color:#fff}
+  .warn{color:#fbbf24}
+  .hint{font-size:.86rem;color:var(--mut);margin-top:6px}
+  .kbd{border:1px solid var(--bd);background:color-mix(in oklab,var(--panel) 90%,#000 5%);padding:0 6px;border-radius:6px}
+  audio{width:100%;margin-top:10px}
+  .pill{background:color-mix(in oklab,var(--pri) 20%,#fff 10%);color:var(--txt);border:1px solid var(--bd);padding:2px 8px;border-radius:999px;font-size:.8rem}
+  details{border:1px dashed var(--bd);border-radius:12px;padding:10px 12px;background:color-mix(in oklab,var(--panel) 85%,#000 6%);margin-top:12px}
+  summary{cursor:pointer;font-weight:600}
+  .right{display:flex;justify-content:flex-end}
+  .spacer{height:8px}
+  .badge{font-size:.78rem;border:1px solid var(--bd);border-radius:999px;padding:2px 8px;color:var(--mut)}
+  .switch{display:flex;gap:8px;align-items:center}
+  .sep{border:0;border-top:1px solid var(--bd);margin:14px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="right">
+    <span class="badge">Theme:</span>
+    <div class="switch"><button id="themeToggle" class="ghost">🌙 Dark</button></div>
+  </div>
+  <div class="spacer"></div>
+
+  <div class="card">
+    <h1>🔊 TTS tiếng Việt — Offline (System) + Online (ElevenLabs)</h1>
+
+    <label>Chế độ giọng</label>
+    <select id="mode">
+      <option value="system">Offline — Giọng hệ thống (Web Speech API)</option>
+      <option value="eleven">Online — ElevenLabs (MP3, chất lượng cao)</option>
+    </select>
+    <div class="hint">Offline: chạy không mạng (tải file bằng ghi âm tab). ElevenLabs: nhập API Key + chọn voice để tạo MP3 trực tiếp.</div>
+
+    <div id="elevenPanel" style="display:none;margin-top:8px">
+      <div class="grid">
+        <div>
+          <label>ElevenLabs API Key</label>
+          <input id="elevenKey" type="password" placeholder="dán API key tại đây (chỉ lưu trong trình duyệt)">
+        </div>
+        <div>
+          <label>Voice ID (tự điền sau khi chọn voice)</label>
+          <input id="elevenVoice" type="text" placeholder="hoặc dán thủ công nếu đã biết">
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:8px">
+        <div>
+          <label>Model</label>
+          <select id="elevenModel">
+            <option value="eleven_multilingual_v2" selected>eleven_multilingual_v2 (khuyên dùng)</option>
+            <option value="eleven_monolingual_v1">eleven_monolingual_v1</option>
+          </select>
+        </div>
+        <div>
+          <label>Stability / Similarity (0–1, tuỳ chọn)</label>
+          <input id="elevenStability" type="text" value="0.5">
+          <div class="hint">Bật “Dùng preset mặc định” ở dưới để KHÔNG override các thông số này.</div>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:8px">
+        <div>
+          <label>Output format</label>
+          <select id="elevenFormat">
+            <option value="mp3_44100_128" selected>mp3_44100_128 (giống UI, khuyên dùng)</option>
+            <option value="mp3_44100_192">mp3_44100_192</option>
+            <option value="mp3_44100_320">mp3_44100_320</option>
+            <option value="mp3_22050_32">mp3_22050_32 (nhẹ)</option>
+          </select>
+        </div>
+        <div>
+          <label>Optimize streaming latency</label>
+          <select id="elevenLatency">
+            <option value="0" selected>0 (chất lượng gần UI)</option>
+            <option value="1">1</option>
+            <option value="2">2 (độ trễ thấp hơn)</option>
+          </select>
+        </div>
+      </div>
+
+      <label style="display:block;margin-top:8px">
+        <input id="useVoiceDefaults" type="checkbox" checked>
+        Dùng Voice Settings mặc định của voice (không override stability/similarity/style)
+      </label>
+
+      <hr class="sep">
+      <div class="row">
+        <button id="fetchVoices" class="ghost">📥 Tải danh sách voice từ ElevenLabs</button>
+        <select id="elevenVoiceSelect" style="min-width:320px;display:none"></select>
+      </div>
+      <div class="hint">Chọn voice trong danh sách → Voice ID sẽ tự điền. Ưu tiên voice <b>multilingual</b> để đọc tiếng Việt.</div>
+    </div>
+
+    <label style="margin-top:12px">Văn bản</label>
+    <textarea id="text">Xin chào! Đây là bản thử nghiệm TTS tiếng Việt. Bạn có thể chạy Offline (giọng hệ thống) hoặc ElevenLabs (MP3 chất lượng cao).</textarea>
+
+    <div class="row">
+      <button class="ghost" id="cleanPunct">🧹 Làm sạch dấu câu</button>
+      <span class="hint">Chuẩn hoá khoảng trắng, dấu chấm câu, xuống dòng → dễ đọc hơn.</span>
+    </div>
+
+    <div class="grid" style="margin-top:6px">
+      <div id="systemVoiceBox">
+        <label>Giọng (voice) — Offline</label>
+        <select id="voice"></select>
+        <div class="hint">Chọn giọng có <span class="pill">vi-VN</span> / “Vietnamese”.</div>
+      </div>
+      <div>
+        <label>Tốc độ: <span id="rateVal">1.0</span></label>
+        <input id="rate" type="range" min="0.5" max="1.5" step="0.1" value="1.0">
+        <label>Cao độ: <span id="pitchVal">1.0</span></label>
+        <input id="pitch" type="range" min="0.5" max="2" step="0.1" value="1.0">
+      </div>
+    </div>
+
+    <div class="grid">
+      <div>
+        <label><input type="checkbox" id="autoChunk" checked> Bật ngắt câu tự động (Offline)</label>
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+          <div><label>Độ dài câu tối đa</label><input id="maxLen" type="number" value="220" min="80" max="400"></div>
+          <div><label>Nghỉ giữa câu (ms)</label><input id="pauseMs" type="number" value="300" min="0" max="2000"></div>
+        </div>
+        <div class="hint">Áp dụng cho <b>Offline</b>. ElevenLabs tạo MP3 một lần cho toàn văn bản.</div>
+      </div>
+      <div>
+        <label><input type="checkbox" id="highlightSentence" checked> Tô sáng câu đang đọc (Offline)</label>
+        <div class="hint">Giúp theo dõi tiến độ.</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="primary" id="preview">🔈 Nghe thử</button>
+      <button class="success" id="download">⬇️ Tải audio</button>
+      <button class="ghost" id="stop">⏹️ Dừng</button>
+    </div>
+
+    <hr class="sep">
+
+    <div id="offlineRecordRow" class="row">
+      <button class="success" id="recStart">● Bắt đầu ghi âm tab (Offline)</button>
+      <button class="ghost" id="recStop" disabled>■ Dừng & Tải file</button>
+      <a id="downloadLink" class="hint" style="display:none" download="tts_vi.webm">Mở lại file vừa ghi</a>
+    </div>
+    <div class="hint"><span class="warn">Lưu ý ghi âm & tải (Offline):</span> Mở qua <span class="kbd">http://localhost</span> để có Secure Context. Ví dụ <span class="kbd">python -m http.server 8000</span> → <span class="kbd">http://localhost:8000/viet_tts_allinone.html</span>.</div>
+
+    <div class="hint" id="status">Sẵn sàng.</div>
+    <audio id="player" controls></audio>
+
+    <details>
+      <summary>📦 Hướng dẫn cài giọng tiếng Việt (Windows/macOS)</summary>
+      <div class="hint" style="margin-top:8px">
+        <b>Windows 10/11</b><br>
+        1) Settings → <i>Time & Language</i> → <i>Language & Region</i> → <b>Add a language</b> → chọn <b>Vietnamese</b> → cài <b>Speech</b>.<br>
+        2) Settings → <i>Speech</i> → <b>Voices</b> → <b>Add voices</b> → Vietnamese → Install → chọn mặc định. <br>
+        3) Khởi động lại trình duyệt để cập nhật danh sách voice.<br><br>
+        <b>macOS</b><br>
+        1) System Settings → <i>Accessibility</i> → <i>Spoken Content</i> → <b>System Voice</b> → <b>Manage Voices…</b><br>
+        2) Tải <b>Vietnamese</b> (Minh/Lien…) → chọn làm mặc định nếu muốn → reload trang.<br>
+      </div>
+    </details>
+  </div>
+</div>
+
+<script>
+/* =============== THEME =============== */
+const themeToggle=document.getElementById('themeToggle');
+function applySavedTheme(){
+  const saved=localStorage.getItem('tts-theme');
+  document.documentElement.setAttribute('data-theme', saved==='light'?'light':'dark');
+  themeToggle.textContent = saved==='light'?'☀️ Light':'🌙 Dark';
+}
+applySavedTheme();
+themeToggle.addEventListener('click',()=>{
+  const cur=document.documentElement.getAttribute('data-theme');
+  const next=cur==='light'?'dark':'light';
+  document.documentElement.setAttribute('data-theme',next);
+  themeToggle.textContent = next==='light'?'☀️ Light':'🌙 Dark';
+  localStorage.setItem('tts-theme',next);
+});
+
+/* =============== ELEMENTS =============== */
+const modeSel = document.getElementById('mode');
+const elevenPanel = document.getElementById('elevenPanel');
+const elevenKey = document.getElementById('elevenKey');
+const elevenVoice = document.getElementById('elevenVoice');
+const elevenModel = document.getElementById('elevenModel');
+const elevenStability = document.getElementById('elevenStability');
+const elevenFormat = document.getElementById('elevenFormat');
+const elevenLatency = document.getElementById('elevenLatency');
+const useVoiceDefaults = document.getElementById('useVoiceDefaults');
+const fetchVoicesBtn = document.getElementById('fetchVoices');
+const elevenVoiceSelect = document.getElementById('elevenVoiceSelect');
+
+const textEl=document.getElementById('text');
+const voiceEl=document.getElementById('voice');
+const rateEl=document.getElementById('rate');
+const pitchEl=document.getElementById('pitch');
+const rateVal=document.getElementById('rateVal');
+const pitchVal=document.getElementById('pitchVal');
+const autoChunk=document.getElementById('autoChunk');
+const maxLen=document.getElementById('maxLen');
+const pauseMs=document.getElementById('pauseMs');
+const highlightSentence=document.getElementById('highlightSentence');
+const statusEl=document.getElementById('status');
+const player=document.getElementById('player');
+const systemVoiceBox=document.getElementById('systemVoiceBox');
+const offlineRecordRow=document.getElementById('offlineRecordRow');
+
+modeSel.addEventListener('change',updateModeUI);
+function updateModeUI(){
+  const isEleven=modeSel.value==='eleven';
+  elevenPanel.style.display = isEleven?'block':'none';
+  systemVoiceBox.style.display = isEleven?'none':'block';
+  offlineRecordRow.style.display = isEleven?'none':'flex';
+}
+updateModeUI();
+
+/* =============== OFFLINE: Web Speech API =============== */
+let voices=[];
+function populateVoices(){
+  voices = window.speechSynthesis.getVoices() || [];
+  voiceEl.innerHTML='';
+  const vi = voices.filter(v => (v.lang||'').toLowerCase().includes('vi'));
+  const list = vi.length ? vi : voices;
+  if (!vi.length) statusEl.innerHTML='⚠️ Không thấy giọng VI. Cài voice tiếng Việt trong hệ điều hành.';
+  list.forEach(v=>{
+    const opt=document.createElement('option');
+    opt.value=v.name; opt.textContent=`${v.name} — ${v.lang}`;
+    voiceEl.appendChild(opt);
+  });
+  if (vi.length) voiceEl.value=vi[0].name;
+}
+populateVoices();
+window.speechSynthesis.onvoiceschanged=populateVoices;
+
+rateEl.addEventListener('input',()=>rateVal.textContent=rateEl.value);
+pitchEl.addEventListener('input',()=>pitchVal.textContent=pitchEl.value);
+
+function cleanPunctuation(t){
+  t=t.replace(/\r\n/g,'\n').replace(/\n{3,}/g,'\n\n');
+  t=t.replace(/\s*([,;:!?])\s*/g,'$1 ');
+  t=t.replace(/\.\s*/g,'. ');
+  t=t.replace(/\.{4,}/g,'…').replace(/\.{3}/g,'…');
+  t=t.replace(/[“”]/g,'"').replace(/[‘’]/g,"'");
+  t=t.replace(/[ \t]{2,}/g,' ');
+  t=t.split('\n').map(s=>s.trim()).join('\n');
+  return t.trim();
+}
+document.getElementById('cleanPunct').addEventListener('click',()=>{ textEl.value=cleanPunctuation(textEl.value); });
+
+function sentenceSplit(text,maxChars){
+  const parts=[]; const regex=/[^.!?…\n]+[.!?…]?|\n+/g;
+  const tokens=text.match(regex)||[text];
+  const cleaned=tokens.map(s=>s==='\n'||/^\n+$/.test(s)?'\n':s.trim()).filter(s=>s.length>0);
+  let buf='';
+  for(const seg of cleaned){
+    const candidate = buf ? (buf+' '+seg).trim() : seg;
+    if (seg === '\n'){ if (buf){parts.push(buf.trim()); buf='';} parts.push('<<PAUSE>>'); }
+    else if (candidate.length <= maxChars){ buf = candidate; }
+    else {
+      if (buf) parts.push(buf.trim());
+      if (seg.length <= maxChars) buf=seg;
+      else{
+        let tmp=seg;
+        while(tmp.length>maxChars){
+          let cut=tmp.lastIndexOf(' ',maxChars);
+          if (cut<40) cut=maxChars;
+          parts.push(tmp.slice(0,cut).trim());
+          tmp=tmp.slice(cut).trim();
+        }
+        buf=tmp;
+      }
+    }
+  }
+  if (buf) parts.push(buf.trim());
+  return parts.filter(x=>x && x.length>0 || x==='<<PAUSE>>');
+}
+
+let currentQueue=[], currentIndex=-1;
+function highlightCurrent(sentence){
+  if(!highlightSentence.checked) return;
+  statusEl.innerHTML='🔊 Đang đọc: <b>'+sentence.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</b>';
+}
+function readNext(){
+  currentIndex++;
+  if (currentIndex>=currentQueue.length){ statusEl.textContent='✅ Đã đọc xong.'; return; }
+  const item=currentQueue[currentIndex];
+  if (item==='<<PAUSE>>'){ setTimeout(readNext,Math.max(400,Number(pauseMs.value)||300)); return; }
+  const sel=voices.find(v=>v.name===voiceEl.value);
+  const utt=new SpeechSynthesisUtterance(item);
+  if (sel) utt.voice=sel;
+  utt.lang=sel?.lang||'vi-VN';
+  utt.rate=parseFloat(rateEl.value);
+  utt.pitch=parseFloat(pitchEl.value);
+  utt.onstart=()=>highlightCurrent(item);
+  utt.onend=()=>setTimeout(readNext,Math.max(0,Number(pauseMs.value)||300));
+  utt.onerror=e=>{ statusEl.textContent='❌ Lỗi đọc: '+(e.error||''); setTimeout(readNext,0); };
+  window.speechSynthesis.speak(utt);
+}
+function speakOfflinePreview(){
+  window.speechSynthesis.cancel();
+  const txt=textEl.value.trim(); if(!txt) return;
+  const maxChars=Math.max(80,Math.min(800,Number(maxLen.value)||220));
+  if (autoChunk.checked){
+    const prepared=cleanPunctuation(txt);
+    currentQueue=sentenceSplit(prepared,maxChars); currentIndex=-1; readNext();
+  } else {
+    const sel=voices.find(v=>v.name===voiceEl.value);
+    const utt=new SpeechSynthesisUtterance(txt);
+    if(sel) utt.voice=sel; utt.lang=sel?.lang||'vi-VN';
+    utt.rate=parseFloat(rateEl.value); utt.pitch=parseFloat(pitchEl.value);
+    utt.onstart=()=>statusEl.textContent='🔊 Đang đọc...';
+    utt.onend=()=>statusEl.textContent='✅ Đã đọc xong.'; utt.onerror=e=>statusEl.textContent='❌ '+(e.error||'');
+    window.speechSynthesis.speak(utt);
+  }
+}
+
+/* =============== ONLINE: ElevenLabs (giống UI hơn) =============== */
+async function elevenSynthesize(download=false){
+  const key=(elevenKey.value||'').trim();
+  const voiceId=(elevenVoice.value||'').trim();
+  const model=elevenModel.value||'eleven_multilingual_v2';
+  const fmt=elevenFormat.value||'mp3_44100_128';
+  const latency=elevenLatency.value||'0';
+  const useDefaults=!!useVoiceDefaults.checked;
+
+  if (!key || !voiceId){ statusEl.textContent='❌ Nhập API Key và Voice ID (ElevenLabs).'; return; }
+  const text=textEl.value.trim(); if(!text){ statusEl.textContent='❌ Chưa có văn bản.'; return; }
+
+  statusEl.textContent='⏳ ElevenLabs: đang tạo MP3...';
+  try{
+    const body = { text, model_id: model, output_format: fmt };
+    if (!useDefaults){
+      const stab=parseFloat(elevenStability.value);
+      const stability = isNaN(stab) ? 0.5 : Math.max(0,Math.min(1,stab));
+      body.voice_settings = { stability, similarity_boost: 0.7, style: 0.0, use_speaker_boost: true };
+    }
+    const url = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/stream?optimize_streaming_latency=${encodeURIComponent(latency)}`;
+    const res=await fetch(url,{
+      method:'POST',
+      headers:{ 'xi-api-key': key, 'Content-Type':'application/json', 'Accept':'audio/mpeg' },
+      body: JSON.stringify(body)
+    });
+    if(!res.ok){ throw new Error('HTTP '+res.status+' — kiểm tra key/voice/model/CORS.'); }
+
+    const blob=await res.blob();
+    const urlObj=URL.createObjectURL(blob);
+    if (download){
+      const a=document.createElement('a'); a.href=urlObj; a.download='tts_vi_eleven.mp3'; document.body.appendChild(a); a.click(); a.remove();
+      statusEl.textContent='✅ Đã tải MP3 từ ElevenLabs.';
+    } else {
+      player.src=urlObj; await player.play().catch(()=>{});
+      statusEl.textContent='✅ Đã phát MP3 từ ElevenLabs.';
+    }
+  }catch(e){
+    statusEl.textContent='❌ ElevenLabs lỗi: '+e.message;
+  }
+}
+
+/* === Tải danh sách voice === */
+document.getElementById('fetchVoices').addEventListener('click', async ()=>{
+  const key=(elevenKey.value||'').trim();
+  if(!key){ statusEl.textContent='❌ Nhập API Key trước khi tải danh sách voice.'; return; }
+  statusEl.textContent='⏳ Đang tải danh sách voice từ ElevenLabs...';
+  try{
+    const res=await fetch('https://api.elevenlabs.io/v1/voices',{ headers:{ 'xi-api-key': key }});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const voices=(data.voices||[]);
+    elevenVoiceSelect.innerHTML='';
+    voices.forEach(v=>{
+      const opt=document.createElement('option');
+      opt.value=v.voice_id;
+      opt.textContent=`${v.name} — ${v.category||'voice'} — id:${v.voice_id.substring(0,8)}…`;
+      elevenVoiceSelect.appendChild(opt);
+    });
+    elevenVoiceSelect.style.display='inline-block';
+    if (voices.length){
+      elevenVoiceSelect.value=voices[0].voice_id;
+      elevenVoice.value=voices[0].voice_id;
+    }
+    statusEl.textContent='✅ Đã tải danh sách voice.';
+  }catch(e){
+    statusEl.textContent='❌ Không tải được voice list: '+e.message+' (hãy chạy qua http://localhost nếu bị CORS).';
+  }
+});
+elevenVoiceSelect.addEventListener('change', ()=>{ elevenVoice.value = elevenVoiceSelect.value || ''; });
+
+/* =============== NÚT PREVIEW / DOWNLOAD =============== */
+document.getElementById('preview').addEventListener('click',()=>{
+  if (modeSel.value==='eleven') elevenSynthesize(false);
+  else speakOfflinePreview();
+});
+document.getElementById('download').addEventListener('click',()=>{
+  if (modeSel.value==='eleven') elevenSynthesize(true);
+  else startRecording(); // Offline: bắt đầu ghi → phát → dừng để tải .webm
+});
+document.getElementById('stop').addEventListener('click',()=>{ window.speechSynthesis.cancel(); statusEl.textContent='⏹️ Đã dừng.'; });
+
+/* =============== OFFLINE RECORD TAB (WEBM) =============== */
+let mediaRecorder, chunks=[], stream=null;
+async function startRecording(){
+  try{
+    stream=await navigator.mediaDevices.getDisplayMedia({ audio:{ echoCancellation:false, noiseSuppression:false }, video:false });
+    const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+    mediaRecorder=new MediaRecorder(stream,{ mimeType:mime }); chunks=[];
+    mediaRecorder.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+    mediaRecorder.onstop=()=>{
+      const blob=new Blob(chunks,{type: mediaRecorder.mimeType||'audio/webm'});
+      const url=URL.createObjectURL(blob);
+      player.src=url;
+      const a=document.createElement('a'); a.href=url; a.download='tts_vi.webm'; document.body.appendChild(a); a.click(); a.remove();
+      const link=document.getElementById('downloadLink'); link.href=url; link.style.display='inline';
+      statusEl.textContent='✅ Đã ghi & tải file .webm (Offline).';
+      stream.getTracks().forEach(t=>t.stop()); stream=null;
+      document.getElementById('recStart').disabled=false;
+      document.getElementById('recStop').disabled=true;
+    };
+    mediaRecorder.start();
+    statusEl.textContent='⏺️ Đang ghi âm TAB (Offline)... Bấm “🔈 Nghe thử”, sau đó “■ Dừng & Tải file”.';
+    document.getElementById('recStart').disabled=true;
+    document.getElementById('recStop').disabled=false;
+  }catch(err){ statusEl.textContent='❌ Không thể ghi âm tab: '+err; }
+}
+function stopRecording(){ try{ if(mediaRecorder && mediaRecorder.state!=='inactive') mediaRecorder.stop(); }catch(e){} }
+document.getElementById('recStart').onclick=startRecording;
+document.getElementById('recStop').onclick=stopRecording;
+
+/* =============== LƯU CÀI ĐẶT ELEVEN (LOCAL) =============== */
+(function(){
+  const k=localStorage.getItem('xi_key'); if(k) elevenKey.value=k;
+  const v=localStorage.getItem('xi_voice'); if(v) elevenVoice.value=v;
+  const m=localStorage.getItem('xi_model'); if(m) elevenModel.value=m;
+  const s=localStorage.getItem('xi_stability'); if(s) elevenStability.value=s;
+  const f=localStorage.getItem('xi_format'); if(f) elevenFormat.value=f;
+  const l=localStorage.getItem('xi_latency'); if(l) elevenLatency.value=l;
+
+  elevenKey.addEventListener('change',()=>localStorage.setItem('xi_key',elevenKey.value));
+  elevenVoice.addEventListener('change',()=>localStorage.setItem('xi_voice',elevenVoice.value));
+  elevenModel.addEventListener('change',()=>localStorage.setItem('xi_model',elevenModel.value));
+  elevenStability.addEventListener('change',()=>localStorage.setItem('xi_stability',elevenStability.value));
+  elevenFormat.addEventListener('change',()=>localStorage.setItem('xi_format',elevenFormat.value));
+  elevenLatency.addEventListener('change',()=>localStorage.setItem('xi_latency',elevenLatency.value));
+})();
+</script>
+</body>
+</html>
